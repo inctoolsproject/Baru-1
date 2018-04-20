@@ -2,7 +2,7 @@
 import PRANKBOTS
 from PRANKBOTS.lib.ttypes import *	
 from datetime import datetime	
-import io,os,re,ast,six,sys,glob,json,time,timeit,codecs,random,shutil,urllib,urllib2,urllib3,goslate,html5lib,requests,threading,wikipedia,subprocess,googletrans
+import time,random,sys,json,codecs,threading,glob,urllib,urllib2,urllib3,re,ast,os,subprocess,requests,tempfile
 from gtts import gTTS	
 from random import randint	
 from time import sleep	
