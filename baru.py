@@ -11,12 +11,12 @@ from io import StringIO
 from bs4 import BeautifulSoup	
 from threading import Thread	
 from googletrans import Translator	
-if (six.PY2):
-    import urllib2
-    import urllib
-else:
-    import urllib.request
-    import urllib.parse
+#if (six.PY2):
+    #import urllib2
+    #import urllib
+#else:
+    #import urllib.request
+    #import urllib.parse
 acil = PRANKBOTS.LINE()
 acil.login(token="EsM2iDWBDKwDb8yX7Tse.4uWnRTJU51yT+/CjXTyHBG.XQmCBtYS2zD5H5IpOuwmlnmy5TYUNK4H5IXWWvPbp/A=")
 acil.loginResult()
