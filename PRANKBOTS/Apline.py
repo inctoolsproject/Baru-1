@@ -39,9 +39,9 @@ class LINE:
     self.authToken = self.Talk.authToken
     self.cert = self.Talk.cert
     self._headers = {
-              'X-Line-Application': 'DESKTOPWIN\t5.5.1.1.1590\tWINDOWS_NT\t8.0', 
+              'X-Line-Application': 'CHROMEOS\t1.4.17\tChrome_OS\t1', 
               'X-Line-Access': self.authToken, 
-              'User-Agent': 'Line/5.5.1.1.590'
+              'User-Agent': 'Line/1.4.17'
    }
     self.Poll = Poll(self.authToken)
     self.channel = channel.Channel(self.authToken)
@@ -70,6 +70,18 @@ class LINE:
   def updateSettings(self, settingObject):
     return self.Talk.client.updateSettings(0, settingObject)
 
+  def cloneContactProfile(self, mid):
+      contact = self.getContact(mid) 
+      profile = self.getProfile()
+      profile.displayName = contact.displayName
+      profile.statusMessage = contact.statusMessage
+      profile.pictureStatus = contact.pictureStatus
+      self.updateDisplayPicture(profile.pictureStatus)
+      return self.updateProfile(profile)
+    
+  def updateDisplayPicture(self, hash_id):
+      return self.Talk.client.updateProfileAttribute(0, 8, hash_id)
+
 
   """Operation"""
 
@@ -86,6 +98,18 @@ class LINE:
         return self.Poll.stream()
 
   """Message"""
+
+  def kedapkedip(self, tomid, text):
+        M = Message()
+        M.to = tomid
+        t1 = "\xf4\x80\xb0\x82\xf4\x80\xb0\x82\xf4\x80\xb0\x82\xf4\x80\xb0\x82"
+        t2 = "\xf4\x80\x82\xb3\xf4\x8f\xbf\xbf"
+        rst = t1 + text + t2
+        M.text = rst.replace("\n", " ")
+        return self.Talk.client.sendMessage(0, M)
+        
+  def removeAllMessages(self, lastMessageId):
+        return self.Talk.client.removeAllMessages(0,lastMessageId)        
 
   def sendMessage(self, messageObject):
         return self.Talk.client.sendMessage(0,messageObject)
@@ -133,7 +157,7 @@ class LINE:
 
         r = requests.get(url, stream=True)
         if r.status_code == 200:
-            with open(path, 'wb') as f:
+            with open(path, 'w') as f:
                 shutil.copyfileobj(r.raw, f)
         else:
             raise Exception('Download image failure.')
@@ -142,17 +166,48 @@ class LINE:
             self.sendImage(to_, path)
         except Exception as e:
             raise e
-            
-  def getCover(self,mid):
-        h = self.getHome(mid)
-        objId = h["result"]["homeInfo"]["objectId"]
-        return "http://dl.profile.line-cdn.net/myhome/c/download.nhn?userid=" + mid + "&oid=" + objId
-        
+
+  def sendAudioWithURL(self, to_, url):
+      path = 'pythonLiness.data'
+      r = requests.get(url, stream=True)
+      if r.status_code == 200:
+         with open(path, 'w') as f:
+            shutil.copyfileobj(r.raw, f)
+      else:
+         raise Exception('Download Audio failure.')
+      try:
+         self.sendAudio(to_, path)
+      except Exception as e:
+         raise e
+         
+  def sendAudio(self, to_, path):
+      M = Message(to=to_,contentType = 3)
+      M.contentMetadata = None
+      M.contentPreview = None
+      M_id = self.Talk.client.sendMessage(0,M).id
+      files = {
+         'file': open(path, 'rb'),
+      }
+      params = {
+         'name': 'media',
+         'oid': M_id,
+         'size': len(open(path, 'rb').read()),
+         'type': 'audio',
+         'ver': '1.0',
+      }
+      data = {
+         'params': json.dumps(params)
+      }
+      r = self.post_content('https://os.line.naver.jp/talk/m/upload.nhn', data=data, files=files)
+      if r.status_code != 201:
+         raise Exception('Upload image failure.')
+      return True
+      
   def sendVideo(self, to_, path):
       M = Message(to=to_,contentType = 2)
       M.contentMetadata = {
-           'VIDLEN' : '60000',
-           'DURATION' : '60000'
+           'VIDLEN' : '0',
+           'DURATION' : '0'
        }
       M.contentPreview = None
       M_id = self.Talk.client.sendMessage(0,M).id
@@ -181,111 +236,56 @@ class LINE:
          with open(path, 'w') as f:
             shutil.copyfileobj(r.raw, f)
       else:
-         raise Exception('Download Video failure.')
+         raise Exception('Download Audio failure.')
       try:
          self.sendVideo(to_, path)
       except Exception as e:
          raise e
+         
+  def sendGif(self, to_, path):
+      M = Message(to=to_,contentType = 1)
+      M.contentMetadata = {
+           'VIDLEN' : '0',
+           'DURATION' : '0'
+       }
+      M.contentPreview = None
+      M_id = self.Talk.client.sendMessage(0,M).id
+      files = {
+         'file': open(path, 'rb'),
+      }
+      params = {
+         'name': 'media',
+         'oid': M_id,
+         'size': len(open(path, 'rb').read()),
+         'type': 'image',
+         'ver': '1.0',
+      }
+      data = {
+         'params': json.dumps(params)
+      }
+      r = self.post_content('https://os.line.naver.jp/talk/m/upload.nhn', data=data, files=files)
+      if r.status_code != 201:
+         raise Exception('Upload Gif failure.')
+      return True
       
-  def sendAudio(self, to_, path):
-        M = Message(to=to_, text=None, contentType = 3)
-        M.contentMetadata = None
-        M.contentPreview = None
-        M2 = self.Talk.client.sendMessage(0,M)
-        M_id = M2.id
-        files = {
-            'file': open(path, 'rb'),
-        }
-        params = {
-            'name': 'media',
-            'oid': M_id,
-            'size': len(open(path, 'rb').read()),
-            'type': 'audio',
-            'ver': '1.0',
-        }
-        data = {
-            'params': json.dumps(params)
-        }
-        r = self.post_content('https://obs-sg.line-apps.com/talk/m/upload.nhn', data=data, files=files)
-        if r.status_code != 201:
-            raise Exception('Upload audio failure.')
-        return True
+  def sendGifWithURL(self, to_, url):
+      path = 'pythonLiness.data'
+      r = requests.get(url, stream=True)
+      if r.status_code == 200:
+         with open(path, 'w') as f:
+            shutil.copyfileobj(r.raw, f)
+      else:
+         raise Exception('Download Gif failure.')
+      try:
+         self.sendGif(to_, path)
+      except Exception as e:
+         raise e         
 
-  def sendAudioWithURL(self, to_, url):
-        path = '%s/pythonLine-%i.data' % (tempfile.gettempdir(), randint(0, 9))
-        r = requests.get(url, stream=True)
-        if r.status_code == 200:
-            with open(path, 'wb') as f:
-              r.raw.decode_content = True
-              shutil.copyfileobj(r.raw, f)
-        else:
-            raise Exception('Download Audio failure.')
-        try:
-            self.sendAudio(to_, path)
-        except Exception as e:
-          print e
-
-  def download_page(url):
-    version = (3,0)
-    cur_version = sys.version_info
-    if cur_version >= version:     #If the Current Version of Python is 3.0 or above
-        import urllib.request    #urllib library for Extracting web pages
-        try:
-            headers = {}
-            headers['User-Agent'] = "Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2228.0 Safari/537.36"
-            req = urllib.request.Request(url, headers = headers)
-            resp = urllib.request.urlopen(req)
-            respData = str(resp.read())
-            return respData
-        except Exception as e:
-            print(str(e))
-    else:                        #If the Current Version of Python is 2.x
-        import urllib2
-        try:
-            headers = {}
-            headers['User-Agent'] = "Mozilla/5.0 (X11; Linux i686) AppleWebKit/537.17 (KHTML, like Gecko) Chrome/24.0.1312.27 Safari/537.17"
-            req = urllib2.Request(url, headers = headers)
-            response = urllib2.urlopen(req)
-            page = response.read()
-            return page
-        except:
-            return"Page Not found"
-
-  #Finding 'Next Image' from the given raw page
-  def _images_get_next_item(s):
-    start_line = s.find('rg_di')
-    if start_line == -1:    #If no links are found then give an error!
-        end_quote = 0
-        link = "no_links"
-        return link, end_quote
-    else:
-        start_line = s.find('"class="rg_meta"')
-        start_content = s.find('"ou"',start_line+70)
-        end_content = s.find(',"ow"',start_content-70)
-        content_raw = str(s[start_content+6:end_content-1])
-        return content_raw, end_content
-
-
-  #Getting all links with the help of '_images_get_next_image'
-  def _images_get_all_items(page):
-    items = []
-    while True:
-        item, end_content = _images_get_next_item(page)
-        if item == "no_links":
-            break
-        else:
-            items.append(item)      #Append all the links in the list named 'Links'
-            page = page[end_content:]
-    return items
-			
   def sendEvent(self, messageObject):
-        return self._client.sendEvent(0, messageObject)
+        return self.Talk.client.sendEvent(0, messageObject)
 
   def sendChatChecked(self, mid, lastMessageId):
         return self.Talk.client.sendChatChecked(0, mid, lastMessageId)
-
-  def sendChatRemoved(self, mid, lastMessageId):
-        return self.Talk.client.sendChatRemoved(0, mid, lastMessageId)
 
   def getMessageBoxCompactWrapUp(self, mid):
         return self.Talk.client.getMessageBoxCompactWrapUp(mid)
@@ -310,6 +310,11 @@ class LINE:
 
   def getMessageBoxWrapUpList(self, start, messageBoxCount):
         return self.Talk.client.getMessageBoxWrapUpList(start, messageBoxCount)
+        
+  def getCover(self,mid):
+        h = self.getHome(mid)
+        objId = h["result"]["homeInfo"]["objectId"]
+        return "http://dl.profile.line-cdn.net/myhome/c/download.nhn?userid=" + mid+ "&oid=" + objId        
 
   """Contact"""
 
@@ -356,6 +361,18 @@ class LINE:
 
   def getHiddenContactMids(self):
         return self.Talk.client.getHiddenContactMids()
+
+  def CloneContactProfile(self, mid):
+	contact = self.getContact(mid)
+	profile = self.getProfile()
+	profile.displayName = contact.displayName
+	profile.statusMessage = contact.statusMessage
+	profile.pictureStatus = contact.pictureStatus
+	self.updateDisplayPicture(profile.pictureStatus)
+	return self.updateProfile(profile)
+
+  def updateDisplayPicture(self, hash_id):
+        return self.Talk.client.updateProfileAttribute(0, 8, hash_id)
 
 
   """Group"""
@@ -404,6 +421,7 @@ class LINE:
 
   def updateGroup(self, groupObject):
         return self.Talk.client.updateGroup(0, groupObject)
+        
   def findGroupByTicket(self,ticketId):
         return self.Talk.client.findGroupByTicket(0,ticketId)
 
@@ -458,20 +476,7 @@ class LINE:
 
   def createAlbum2(self, gid, name, path):
       return self.channel.createAlbum(gid, name, path, oid)
-      
-  """Personalize"""
-    
-  def cloneContactProfile(self, mid):
-      contact = self.getContact(mid)
-      profile = self.getProfile()
-      profile.displayName = contact.displayName
-      profile.statusMessage = contact.statusMessage
-      profile.pictureStatus = contact.pictureStatus
-      self.updateDisplayPicture(profile.pictureStatus)
-      return self.updateProfile(profile)
-  
-  def updateDisplayPicture(self, hash_id):
-      return self.Talk.client.updateProfileAttribute(0, 8, hash_id)
+
 
   def __validate(self, mail, passwd, cert, token, qr):
     if mail is not None and passwd is not None and cert is None:
@@ -485,16 +490,16 @@ class LINE:
     else:
       return 5
 
-  def loginResult(self, callback=None):
-    if callback is None:
+  def loginResult(self, callback=True):
+    if callback is True:
       callback = def_callback
 
       prof = self.getProfile()
 
-      print("═════════[PRANKBOTS CREATOR]════════")
-      print("════════[ACIL/RIDWAN ADIPUTRA]═══════")
-      print("JANGAN LUPA SUBCRABE CHANNENYA YA SOBAT")
-      print("MIDNA: " + prof.mid)
-      print("NGARANA: " + prof.displayName)
-      print("TOKETNA:  " + self.authToken)
-      #print("cert : " + self.cert if self.cert is not None else "")
+      print("===============[Vipro_Bot]================")
+      print("        Thanks for TCR and my friend")
+      print("===============[© By_Vipro]================")
+      print("mid -> " + prof.mid)
+      print("name -> " + prof.displayName)
+      print("authToken -> " + self.authToken)
+      print("cert -> " + self.cert if self.cert is not None else "")
