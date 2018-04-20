@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 import PRANKBOTS
-from PRANKBOTS.lib.curve.ttypes import *	
+from PRANKBOTS.lib.ttypes import *	
 from datetime import datetime	
 import io,os,re,ast,six,sys,glob,json,time,timeit,codecs,random,shutil,urllib,urllib2,urllib3,goslate,html5lib,requests,threading,wikipedia,subprocess,googletrans
 from gtts import gTTS	
@@ -410,8 +410,8 @@ ki3mid = ki3.getProfile().mid
 ki4mid = ki4.getProfile().mid
 ki5mid = ki5.getProfile().mid
 Bots=[mid,kimid,ki2mid,ki3mid,ki4mid,ki5mid]
-admsa = "ucd84031744997951cdee018db951aea3" #MID SELFBOT
-PRANKBOT = ["ufce863f62f40706c01fa4a3c3c4cb096"] #MID OWNER
+admsa = "u6b34b703cbc5fc83cd1e5b6832a05352" #MID SELFBOT
+PRANKBOT = ["u6b34b703cbc5fc83cd1e5b6832a05352"] #MID OWNER
 wait = {
     'contact':False,
     'autoJoin':True,
